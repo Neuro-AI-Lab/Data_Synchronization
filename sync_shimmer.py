@@ -55,28 +55,25 @@ if __name__ == "__main__":
 
     os.makedirs(output_directory, exist_ok=True)
 
-    eeg_df = load_csv(input_directory, "eeg.csv")
     ecg_df = load_csv(input_directory, "ecg.csv")
     gsr_df = load_csv(input_directory, "gsr.csv")
     video_df = load_csv(input_directory, "video.csv") 
 
     video_timestamps = video_df['timestamp'].values
 
-    start, end = find_overlap(eeg_df, ecg_df, gsr_df, video_df)
+    start, end = find_overlap(ecg_df, gsr_df, video_df)
 
-    eeg_df = eeg_df[(eeg_df['timestamp'] >= start) & (eeg_df['timestamp'] <= end)]
     ecg_df = ecg_df[(ecg_df['timestamp'] >= start) & (ecg_df['timestamp'] <= end)]
     gsr_df = gsr_df[(gsr_df['timestamp'] >= start) & (gsr_df['timestamp'] <= end)]
     video_timestamps = video_timestamps[(video_timestamps >= start) & (video_timestamps <= end)]
     
     segment_duration = 3 # 사용할 데이터 포인트를 초 단위로 clip
     video_fps = 30
-    signal_rates = [2048, 512, 256] # EEG, ECG, GSR sampling rate
+    signal_rates = [512, 256] # ECG, GSR sampling rate
 
-    segment_timestamps, resampled_dfs = select_segment_and_resample(video_fps, segment_duration, video_timestamps, signal_rates, eeg_df, ecg_df, gsr_df)
+    segment_timestamps, resampled_dfs = select_segment_and_resample(video_fps, segment_duration, video_timestamps, signal_rates, ecg_df, gsr_df)
 
-    resampled_dfs[0].to_csv(os.path.join(output_directory, "synchronized_eeg.csv"), index=False)
-    resampled_dfs[1].to_csv(os.path.join(output_directory, "synchronized_ecg.csv"), index=False)
-    resampled_dfs[2].to_csv(os.path.join(output_directory, "synchronized_gsr.csv"), index=False)
+    resampled_dfs[0].to_csv(os.path.join(output_directory, "synchronized_ecg.csv"), index=False)
+    resampled_dfs[1].to_csv(os.path.join(output_directory, "synchronized_gsr.csv"), index=False)
 
     print("Synchronization Complete")
