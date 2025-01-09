@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-# csv 읽는 함수수
+# csv 읽는 함수
 def load_csv(directory, file_name):
     file_path = os.path.join(directory, file_name)
     return pd.read_csv(file_path)
@@ -12,7 +12,7 @@ def check_and_adjust_signals(df, start_time, end_time, sampling_rate):
     filtered_df = df[(df['timestamp'] >= start_time) & (df['timestamp'] <= end_time)]
 
     required_points = int(sampling_rate * (end_time - start_time)) # 이상적 필요 데이터 포인트 수
-    actual_points = len(filtered_df) # 실제 측정된 데이터 포인트 수수
+    actual_points = len(filtered_df) # 실제 측정된 데이터 포인트 수
 
     print(f"Required Points: {required_points}, Actual Points: {actual_points}")
 
@@ -31,7 +31,7 @@ def check_and_adjust_signals(df, start_time, end_time, sampling_rate):
         combined_df = filtered_df.iloc[:-excess_points]
         print(f"Removed {excess_points} excess points.")
 
-    else: # 완벽하게 데이터 포인트가 구성되었다면 그대로 반환환
+    else: # 완벽하게 데이터 포인트가 구성되었다면 그대로 반환
         combined_df = filtered_df
         print("Data points are correct.")
 
