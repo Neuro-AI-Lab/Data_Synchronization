@@ -10,7 +10,8 @@ def interpolate_1Dsignals(df, target_rate):
 
     original_time = df[time_column].values
 
-    target_time = np.arange(original_time[0], original_time[-1], 1 / target_rate)
+    num_points = int((original_time[-1] - original_time[0]) * target_rate / 1000) + 1
+    target_time = np.linspace(original_time[0], original_time[-1], num_points)
 
     interpolated_data = {'timestamp': target_time}
 
