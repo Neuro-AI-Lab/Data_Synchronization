@@ -6,6 +6,9 @@ import numpy as np
 from datetime import datetime, timedelta, timezone
 import json
 import cv2
+import numpy as np
+import sync as sc
+import validation as vd
 
 class DataLoader:
     def __init__(self, data_path):
@@ -239,12 +242,12 @@ if __name__ == "__main__":
     loader = DataLoader(data_path)
 
     EEG_file_name = ''
-    ECG_file_name = 'LJY241119_E_Session1_id820D_Calibrated_SD.csv'
-    GSR_file_name = 'LJY241119_GP_Session1_id95AE_Calibrated_SD.csv'
-    PPG_file_name = 'LJY241119_GP_Session1_id95AE_Calibrated_SD.csv'
+    ECG_file_name = 'LJY250110_E_Session1_id820D_Calibrated_SD.csv'
+    GSR_file_name = 'LJY250110_GP_Session1_id95AE_Calibrated_SD.csv'
+    PPG_file_name = 'LJY250110_GP_Session1_id95AE_Calibrated_SD.csv'
 
-    video_file_name = 'output_video.avi'
-    video_timestamp_name = 'video.csv'
+    video_file_name = 'LJY250110_V.avi'
+    video_timestamp_name = 'LJY250110_V.csv'
 
     ECG = Data('ECG', ECG_file_name)
     GSR = Data('GSR', GSR_file_name)
@@ -263,6 +266,4 @@ if __name__ == "__main__":
 
     interpolate_data_point_idx = get_data_point_index(target_signal=ECG, interpolate_range=['2024-11-19 16:29:00.01213', '2024-11-19 16:30:00.114135'])
 
-    print(interpolate_data_point_idx)
-
-    print(len(VIDEO.data))
+    print(len(VIDEO.timestamp))

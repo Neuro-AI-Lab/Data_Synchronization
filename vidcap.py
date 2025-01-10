@@ -15,7 +15,7 @@ def get_directory_by_name(base_dir, custom_name):
 
 def record_video(directory, fps=30):
     """Records a video and saves timestamps in memory. Writes timestamps to CSV after recording stops."""
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     if not cap.isOpened():
         print("Error: Could not open camera.")
         return
@@ -24,8 +24,8 @@ def record_video(directory, fps=30):
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     cap.set(cv2.CAP_PROP_FPS, fps)
 
-    video_path = os.path.join(directory, 'output_video.avi')
-    csv_path = os.path.join(directory, 'video.csv')
+    video_path = os.path.join(directory, 'LJY250110_V.avi')
+    csv_path = os.path.join(directory, 'LJY250110_V.csv')
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(video_path, fourcc, fps, (frame_width, frame_height))
 
