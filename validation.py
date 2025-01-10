@@ -31,3 +31,23 @@ def calculate_psnr(original_frames, synchronized_frames):
 
     return np.mean(psnr_values)
 
+def save_frames_to_video(frames, output_path, fps=30):
+    if not frames:
+        print("프레임 리스트가 비어 있습니다.")
+        return
+
+    # 프레임 크기 확인
+    height, width, channels = frames[0].shape
+    size = (width, height)
+
+    # VideoWriter 객체 생성
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')  # AVI 코덱
+    out = cv2.VideoWriter(output_path, fourcc, fps, size)
+
+    # 프레임 추가
+    for frame in frames:
+        out.write(frame)
+
+    # 자원 해제
+    out.release()
+    print(f"동영상 저장 완료: {output_path}")

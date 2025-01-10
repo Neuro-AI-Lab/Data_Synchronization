@@ -24,8 +24,8 @@ def record_video(directory, fps=30):
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     cap.set(cv2.CAP_PROP_FPS, fps)
 
-    video_path = os.path.join(directory, 'output_video.avi')
-    csv_path = os.path.join(directory, 'video.csv')
+    video_path = os.path.join(directory, 'LJY250110_V.avi')
+    csv_path = os.path.join(directory, 'LJY250110_V.csv')
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(video_path, fourcc, fps, (frame_width, frame_height))
 

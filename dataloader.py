@@ -233,12 +233,12 @@ if __name__ == "__main__":
     loader = DataLoader(data_path)
 
     EEG_file_name = ''
-    ECG_file_name = 'LJY241119_E_Session1_id820D_Calibrated_SD.csv'
-    GSR_file_name = 'LJY241119_GP_Session1_id95AE_Calibrated_SD.csv'
-    PPG_file_name = 'LJY241119_GP_Session1_id95AE_Calibrated_SD.csv'
+    ECG_file_name = 'LJY250110_E_Session1_id820D_Calibrated_SD.csv'
+    GSR_file_name = 'LJY250110_GP_Session1_id95AE_Calibrated_SD.csv'
+    PPG_file_name = 'LJY250110_GP_Session1_id95AE_Calibrated_SD.csv'
 
-    video_file_name = 'output_video.avi'
-    video_timestamp_name = 'video.csv'
+    video_file_name = 'LJY250110_V.avi'
+    video_timestamp_name = 'LJY250110_V.csv'
 
     ECG = Data('ECG', ECG_file_name)
     GSR = Data('GSR', GSR_file_name)
@@ -256,9 +256,12 @@ if __name__ == "__main__":
     target = ECG
     interpolate_lange = []
 
-    I_timestamp, I_frames = sc.interpolate_video(VIDEO.timestamp, VIDEO.data, sampling_rate=500)
+    I_timestamp, I_frames = sc.interpolate_video(VIDEO.timestamp, VIDEO.data, sampling_rate=30)
 
-    synchronized_frames = vd.synchronize_frames(VIDEO.data, VIDEO.timestamp, I_frames, I_timestamp)
+    synchronized_frames = vd.synchronize_nearest_frames(VIDEO.data, VIDEO.timestamp, I_frames, I_timestamp)
+
+    vd.save_frames_to_video(synchronized_frames, 'interp_LJY250110_V.avi', fps=30)
+    
     average_psnr = vd.calculate_psnr(VIDEO.data, synchronized_frames)
     print(f"Average PSNR between original and synchronized frames: {average_psnr:.2f} dB")
 
