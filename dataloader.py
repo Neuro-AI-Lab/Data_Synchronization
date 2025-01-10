@@ -41,7 +41,6 @@ class DataLoader:
                 file_type = 'csv'
             elif file_name.endswith('.avi'):
                 file_type = 'avi'
-
             # elif file_name.endswith('.json'):
             #     file_type = 'json'
             # elif file_name.endswith(('.xls', '.xlsx')):
@@ -143,6 +142,7 @@ class Data:
         self.data_file_name = data_file_name
         self.timestamp_file_name = timestamp_file_name
         self.loader = DataLoader('./recordings/Input')
+        self.column = []
         
         if modality_type == 'VIDEO':
             video_path = self.loader.load(self.data_file_name, 'avi')
@@ -168,13 +168,20 @@ class Data:
 
     def get_data(self):
         if self.modality_type == 'ECG':
-            return self.load_data['sep=\t'].apply(lambda x: x.split('\t')[3:])
+            temp = self.load_data['sep=\t'][2:].apply(lambda x: x.split('\t')[3:])
+            temp = pd.DataFrame(temp.tolist(), columns=['id820D_ECG_LA-RA_24BIT_CAL', 'id820D_ECG_LL-LA_24BIT_CAL', 'id820D_ECG_LL-RA_24BIT_CAL', 'id820D_ECG_Vx-RL_24BIT_CAL','?'])
+            self.column = ['id820D_ECG_LA-RA_24BIT_CAL', 'id820D_ECG_LL-LA_24BIT_CAL', 'id820D_ECG_LL-RA_24BIT_CAL', 'id820D_ECG_Vx-RL_24BIT_CAL']
         elif self.modality_type == 'GSR':
-            return self.load_data['sep=\t'].apply(lambda x: x.split('\t')[2:4])
+            temp = self.load_data['sep=\t'][2:].apply(lambda x: x.split('\t')[2:4])
+            temp = pd.DataFrame(temp.tolist(), columns=['id95AE_GSR_Skin_Conductance_CAL', 'id95AE_GSR_Skin_Resistance_CAL'])
+            self.column = ['id95AE_GSR_Skin_Conductance_CAL', 'id95AE_GSR_Skin_Resistance_CAL']
         elif self.modality_type == 'PPG':
-            return self.load_data['sep=\t'].apply(lambda x: x.split('\t')[4])
+            temp = self.load_data['sep=\t'][2:].apply(lambda x: x.split('\t')[4])
+            temp = pd.DataFrame(temp.tolist(), columns=['id95AE_PPG_A13_CAL'])
+            self.column = ['id95AE_PPG_A13_CAL']
         # add new modality here
-
+        # print(temp)
+        return temp
 def unix_to_standard(unix_time, timezone_offset=9):
     """
     유닉스 시간을 표준 시간(YYYY-MM-DD HH:MM:SS.sss)으로 변환하는 함수.
@@ -216,25 +223,41 @@ def standard_to_unix(standard_time, timezone_offset=0):
 def get_data_point_index(target_signal, interpolate_range):
     return target_signal.timestamp[(target_signal.timestamp >= standard_to_unix(interpolate_range[0])) & (target_signal.timestamp <= standard_to_unix(interpolate_range[1]))].index
 
-# def interpolate_shimmer_timestamps(timestamps, values, new_timestamps):
-#     """
-#     쉬머 타임스탬프를 기준으로 값을 선형 보간(interpolation)하는 함수.
+def interpolate(data, target, interpolate_range):
+    """
+    데이터를 기준으로 값을 선형 보간(interpolation)하는 함수.
+    :param data: 보간에 사용할 데이터. 반드시 'timestamp'가 포함되어야함
+    :param target: 보간 데상 데이터프레임. 반드시 'timestamp'와 'data'가 포함되어야함
+    :param interpolate_range: 보간할 시간 범위
+    :return: 보간된 값의 리스트.
+    """
+    try:
+        print('interpolate range: ',interpolate_range[0],'~',interpolate_range[1])
+        # 구간 내 데이터 포인트의 인덱스
+        interpolate_data_point_idx = get_data_point_index(target_signal=data, interpolate_range=interpolate_range)
 
-#     :param timestamps: 기존 타임스탬프 (밀리초 단위, 리스트 또는 numpy 배열).
-#     :param values: 기존 타임스탬프에 대응하는 값 (리스트 또는 numpy 배열).
-#     :param new_timestamps: 새로 보간할 타임스탬프 (밀리초 단위, 리스트 또는 numpy 배열).
-#     :return: 보간된 값의 리스트.
-#     """
-#     try:
-#         # 밀리초 단위를 초 단위로 변환
-#         timestamps = np.array(timestamps) / 1000.0
-#         new_timestamps = np.array(new_timestamps) / 1000.0
+        # 보간할 timestamp
+        interpolate_timestamp = np.array(data.timestamp[interpolate_data_point_idx], dtype=float)
 
-#         # 선형 보간 수행
-#         interpolated_values = np.interp(new_timestamps, timestamps, values)
-#         return interpolated_values
-#     except Exception as e:
-#         return f"오류 발생: {e}"
+        # 데이터 타입 변환
+        target.timestamp = target.timestamp.astype(float)
+        target.data = target.data.replace('', np.nan).astype(object) # 빈 문자열을 NaN으로 변환
+        target.data = target.data.astype(float)
+
+        # 선형 보간 수행
+        result = {}
+        for column in target.column:
+            # 각 열에 대해 선형 보간 수행
+            interpolated_values = np.interp(interpolate_timestamp, target.timestamp, target.data[column])
+            result[column] = interpolated_values
+        # 결과를 DataFrame으로 변환
+        result_df = pd.DataFrame(result, index = interpolate_timestamp)
+        result_df.index_name = 'timestamp' # 인덱스 이름 설정
+
+        return result_df
+    
+    except Exception as e:
+        return f"오류 발생: {e}"
 
 
 if __name__ == "__main__":
@@ -264,6 +287,8 @@ if __name__ == "__main__":
 
     print(datetime.now())
 
-    interpolate_data_point_idx = get_data_point_index(target_signal=ECG, interpolate_range=['2024-11-19 16:29:00.01213', '2024-11-19 16:30:00.114135'])
+    # interpolate 진행
+    interpolate_result = interpolate(data=ECG, target=GSR, interpolate_range=['2025-01-10 17:19:30.01213', '2025-01-10 17:19:30.114135'])
+    print(interpolate_result) # 결과 출력
 
-    print(len(VIDEO.timestamp))
+    # print(len(VIDEO.timestamp))
