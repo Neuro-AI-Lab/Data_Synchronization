@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 # import json
 # import matplotlib.pyplot as plt
-import datetime
+from datetime import datetime, timedelta, timezone
 import json
 import cv2
 import numpy as np
@@ -132,7 +132,6 @@ class VideoLoader:
 
         return frames, self.timestamps
 
-
 class Data:
     def __init__(self, modality_type, data_file_name, timestamp_file_name=None):
         """
@@ -162,7 +161,9 @@ class Data:
 
     def get_timestamp(self):
         if self.modality_type in ['ECG', 'GSR', 'PPG']:
-            return self.load_data['sep=\t'].apply(lambda x: x.split('\t')[0])
+            temp = self.load_data['sep=\t'][2:].apply(lambda x: float(x.split('\t')[0])/1000.0)
+            temp.index = pd.RangeIndex(start=0, stop=len(temp), step = 1)
+            return temp
         # add new modality here
 
     def get_data(self):
@@ -174,39 +175,47 @@ class Data:
             return self.load_data['sep=\t'].apply(lambda x: x.split('\t')[4])
         # add new modality here
 
-def ms_unix_to_standard(unix_time, timezone_offset=9):
+def unix_to_standard(unix_time, timezone_offset=9):
     """
-    유닉스 시간을 표준 시간(YYYY-MM-DD HH:MM:SS.ms)으로 변환하는 함수.
+    유닉스 시간을 표준 시간(YYYY-MM-DD HH:MM:SS.sss)으로 변환하는 함수.
 
-    :param unix_time: 유닉스 시간 (ms 단위,  실수).
-    :param timezone_offset: 표준 시간대 오프셋 (시간 단위, 기본값: 9 대한민국 시간 (UTC+9)).
-    :return: 표준 시간 문자열 (YYYY-MM-DD HH:MM:SS.ms 형식).
+    :param unix_time: 유닉스 시간 (초 단위, 실수).
+    :return: 표준 시간 문자열 (YYYY-MM-DD HH:MM:SS.sss 형식).
     """
     try:
-        # 유닉스 시간을 datetime 객체로 변환
-        standard_time = datetime.datetime.utcfromtimestamp(float(unix_time)/1000.0) + datetime.timedelta(hours=timezone_offset)
-        return standard_time.strftime('%Y-%m-%d %H:%M:%S')+'.'+str(float(unix_time)*100%100000).split('.')[0]
+        # 유닉스 시간을 timezone-aware UTC datetime 객체로 변환
+        utc_time = datetime.fromtimestamp(unix_time, tz=timezone.utc)
+        # 시간대 오프셋을 추가
+        local_time = utc_time + timedelta(hours=timezone_offset)
+        # 밀리초 계산
+        milliseconds = str(unix_time).split('.')[1]
+        # milliseconds = int((unix_time - int(unix_time)) * 1000)
+        return local_time.strftime('%Y-%m-%d %H:%M:%S') + f".{milliseconds}"
     except Exception as e:
         return f"오류 발생: {e}"
-    
-def standard_to_unix(standard_time, timezone_offset=9):
-    """
-    표준 시간(YYYY-MM-DD HH:MM:SS)을 유닉스 시간으로 변환하는 함수.
 
-    :param standard_time: 표준 시간 문자열 (YYYY-MM-DD HH:MM:SS 형식).
+def standard_to_unix(standard_time, timezone_offset=0):
+    """
+    표준 시간(YYYY-MM-DD HH:MM:SS.sss)을 유닉스 시간으로 변환하는 함수.
+
+    :param standard_time: 표준 시간 문자열 (YYYY-MM-DD HH:MM:SS.sss 형식).
     :param timezone_offset: 표준 시간대 오프셋 (시간 단위, 기본값: 9).
     :return: 유닉스 시간 (초 단위, float 형식).
     """
     try:
         # 표준 시간을 datetime 객체로 변환
-        dt = datetime.datetime.strptime(standard_time, '%Y-%m-%d %H:%M:%S')
-        # 시간대 오프셋을 제거한 UTC 시간으로 변환
-        dt_utc = dt - datetime.timedelta(hours=timezone_offset)
+        time_part, milliseconds_part = standard_time.split('.')
+        local_time = datetime.strptime(time_part, '%Y-%m-%d %H:%M:%S')
+        # 시간대 오프셋을 제거하여 UTC로 변환
+        utc_time = local_time - timedelta(hours=timezone_offset)
         # UTC 시간을 유닉스 시간으로 변환
-        return dt_utc.timestamp()
+        return float(str(utc_time.timestamp()).split('.')[0] +'.'+ milliseconds_part)
     except Exception as e:
         return f"오류 발생: {e}"
-    
+
+def get_data_point_index(target_signal, interpolate_range):
+    return target_signal.timestamp[(target_signal.timestamp >= standard_to_unix(interpolate_range[0])) & (target_signal.timestamp <= standard_to_unix(interpolate_range[1]))].index
+
 # def interpolate_shimmer_timestamps(timestamps, values, new_timestamps):
 #     """
 #     쉬머 타임스탬프를 기준으로 값을 선형 보간(interpolation)하는 함수.
@@ -249,33 +258,12 @@ if __name__ == "__main__":
     # print(GSR.timestamp, GSR.data)
     # print(PPG.timestamp, PPG.data)
 
-    print('ECG timestamp range : '+ms_unix_to_standard(ECG.timestamp[2])+' ~ '+ms_unix_to_standard(ECG.timestamp[len(ECG.timestamp)-2]))
-    print('GSR timestamp range : '+ms_unix_to_standard(GSR.timestamp[2])+' ~ '+ms_unix_to_standard(GSR.timestamp[len(GSR.timestamp)-2]))
-    print('PPG timestamp range : '+ms_unix_to_standard(PPG.timestamp[2])+' ~ '+ms_unix_to_standard(PPG.timestamp[len(PPG.timestamp)-2]))
+    print('ECG timestamp range : '+unix_to_standard(ECG.timestamp[2])+' ~ '+unix_to_standard(ECG.timestamp[len(ECG.timestamp)-2]))
+    print('GSR timestamp range : '+unix_to_standard(GSR.timestamp[2])+' ~ '+unix_to_standard(GSR.timestamp[len(GSR.timestamp)-2]))
+    print('PPG timestamp range : '+unix_to_standard(PPG.timestamp[2])+' ~ '+unix_to_standard(PPG.timestamp[len(PPG.timestamp)-2]))
 
-    target = ECG
-    interpolate_lange = []
+    print(datetime.now())
 
-    I_timestamp, I_frames = sc.interpolate_video(VIDEO.timestamp, VIDEO.data, sampling_rate=30)
+    interpolate_data_point_idx = get_data_point_index(target_signal=ECG, interpolate_range=['2024-11-19 16:29:00.01213', '2024-11-19 16:30:00.114135'])
 
-    synchronized_frames = vd.synchronize_nearest_frames(VIDEO.data, VIDEO.timestamp, I_frames, I_timestamp)
-
-    vd.save_frames_to_video(synchronized_frames, 'interp_LJY250110_V.avi', fps=30)
-    
-    average_psnr = vd.calculate_psnr(VIDEO.data, synchronized_frames)
-    print(f"Average PSNR between original and synchronized frames: {average_psnr:.2f} dB")
-
-    psnr_values = []
-    
-    for i, (original, synchronized) in enumerate(zip(VIDEO.data, synchronized_frames)):
-        mse = np.mean((original - synchronized) ** 2)
-        if mse == 0:
-            print(f"Frame {i}: PSNR = inf (identical frames)")
-        else:
-            psnr_value = 10 * np.log10((255 ** 2) / mse)
-            psnr_values.append(psnr_value)
-            print(f"Frame {i}: PSNR = {psnr_value:.2f}")
-
-    average_psnr = np.mean(psnr_values)
-    print(f"Average PSNR (excluding inf): {average_psnr:.2f} dB")
-
+    print(len(VIDEO.timestamp))
