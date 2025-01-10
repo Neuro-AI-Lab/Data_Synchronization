@@ -2,6 +2,9 @@ import os
 import pandas as pd
 import json
 import cv2
+import numpy as np
+import sync as sc
+import validation as vd
 
 class DataLoader:
     def __init__(self, data_path):
@@ -184,4 +187,23 @@ if __name__ == "__main__":
     PPG = Data('PPG', PPG_file_name)
     VIDEO = Data('VIDEO', video_file_name, video_timestamp_name)
 
-    print(len(VIDEO.timestamp))
+    I_timestamp, I_frames = sc.interpolate_video(VIDEO.timestamp, VIDEO.data, sampling_rate=500)
+
+    synchronized_frames = vd.synchronize_frames(VIDEO.data, VIDEO.timestamp, I_frames, I_timestamp)
+    average_psnr = vd.calculate_psnr(VIDEO.data, synchronized_frames)
+    print(f"Average PSNR between original and synchronized frames: {average_psnr:.2f} dB")
+
+    psnr_values = []
+    
+    for i, (original, synchronized) in enumerate(zip(VIDEO.data, synchronized_frames)):
+        mse = np.mean((original - synchronized) ** 2)
+        if mse == 0:
+            print(f"Frame {i}: PSNR = inf (identical frames)")
+        else:
+            psnr_value = 10 * np.log10((255 ** 2) / mse)
+            psnr_values.append(psnr_value)
+            print(f"Frame {i}: PSNR = {psnr_value:.2f}")
+
+    average_psnr = np.mean(psnr_values)
+    print(f"Average PSNR (excluding inf): {average_psnr:.2f} dB")
+
