@@ -2,13 +2,14 @@ import os
 import pandas as pd
 import numpy as np
 # import json
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from datetime import datetime, timedelta, timezone
 import json
-import cv2
+# import cv2
 import numpy as np
-import sync as sc
-import validation as vd
+# import sync as sc
+# import validation as vd
+from scipy.interpolate import interp1d
 
 class DataLoader:
     def __init__(self, data_path):
@@ -241,14 +242,25 @@ def interpolate(data, target, interpolate_range):
 
         # 데이터 타입 변환
         target.timestamp = target.timestamp.astype(float)
-        target.data = target.data.replace('', np.nan).astype(object) # 빈 문자열을 NaN으로 변환
+        target.data = target.data.replace('', np.nan).infer_objects()  # 빈 문자열을 NaN으로 변환
         target.data = target.data.astype(float)
 
         # 선형 보간 수행
         result = {}
         for column in target.column:
+            # 보간 함수 생성 (선형 보간 사용)
+            interpolation_function = interp1d(
+                target.timestamp, 
+                target.data[column], 
+                kind='cubic', 
+                bounds_error=False,  # 범위 밖 값 처리
+                fill_value='extrapolate',  # 범위 밖 값 보간 허용
+                assume_sorted= True,
+            )
             # 각 열에 대해 선형 보간 수행
-            interpolated_values = np.interp(interpolate_timestamp, target.timestamp, target.data[column])
+            interpolated_values = interpolation_function(interpolate_timestamp)
+            # # 각 열에 대해 선형 보간 수행
+            # interpolated_values = np.interp(interpolate_timestamp, target.timestamp, target.data[column])
             result[column] = interpolated_values
         # 결과를 DataFrame으로 변환
         result_df = pd.DataFrame(result, index = interpolate_timestamp)
@@ -259,6 +271,59 @@ def interpolate(data, target, interpolate_range):
     except Exception as e:
         return f"오류 발생: {e}"
 
+def plot_signals(original_data, interpolated_data, interpolate_range, column_to_plot):
+    """
+    원래 신호와 보간된 신호를 플롯하는 함수.
+
+    :param original_data: 원래 신호 데이터 (Data 객체)
+    :param interpolated_data: 보간된 신호 데이터 (pandas DataFrame)
+    :param interpolate_range: 보간 범위 (리스트: [시작 시간, 종료 시간])
+    :param column_to_plot: 플롯할 데이터 컬럼명 (string)
+    """
+    try:
+        # 원래 데이터에서 보간 구간만 선택
+        original_range_idx = get_data_point_index(
+            target_signal=original_data, interpolate_range=interpolate_range
+        )
+        original_timestamps = original_data.timestamp[original_range_idx]
+        original_values = original_data.data[column_to_plot][original_range_idx]
+
+        # 보간 데이터에서 타임스탬프와 값 선택
+        interpolated_timestamps = interpolated_data.index
+        interpolated_values = interpolated_data[column_to_plot]
+
+        # 플롯 생성
+        plt.figure(figsize=(12, 6))
+
+        # 원래 신호 플롯
+        plt.plot(
+            original_timestamps,
+            original_values,
+            label="Original Signal",
+            marker="o",
+            linestyle="-",
+        )
+
+        # 보간 신호 플롯
+        plt.plot(
+            interpolated_timestamps,
+            interpolated_values,
+            label="Interpolated Signal",
+            marker="x",
+            linestyle="-",
+        )
+
+        # 그래프 설정
+        plt.title(f"Original vs Interpolated Signal ({column_to_plot})")
+        plt.xlabel("Timestamp")
+        plt.ylabel("Value")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        print(f"Error in plot_signals: {e}")
 
 if __name__ == "__main__":
     data_path = "./recordings/Input"
@@ -275,7 +340,7 @@ if __name__ == "__main__":
     ECG = Data('ECG', ECG_file_name)
     GSR = Data('GSR', GSR_file_name)
     PPG = Data('PPG', PPG_file_name)
-    VIDEO = Data('VIDEO', video_file_name, video_timestamp_name)
+    # VIDEO = Data('VIDEO', video_file_name, video_timestamp_name)
 
     # print(ECG.timestamp, ECG.data)
     # print(GSR.timestamp, GSR.data)
@@ -287,8 +352,21 @@ if __name__ == "__main__":
 
     print(datetime.now())
 
-    # interpolate 진행
-    interpolate_result = interpolate(data=ECG, target=GSR, interpolate_range=['2025-01-10 17:19:30.01213', '2025-01-10 17:19:30.114135'])
-    print(interpolate_result) # 결과 출력
+    # 보간 범위
+    interpolate_range = ["2025-01-10 17:19:30.01213", "2025-01-10 17:19:40.114135"]
+    data = ECG      # 보간 기준이 되는 신호
+    target = PPG    # 보간 시키려는 신호
+
+    # 보간 수행
+    interpolate_result = interpolate(data=data, target=target, interpolate_range=interpolate_range)
+
+    # 보간된 결과 비교
+    column_to_plot = "id95AE_PPG_A13_CAL"  # 플롯할 컬럼명 (보간 기준이 되는 신호에 포함된 컬럼명이여야 함.)
+    plot_signals(original_data=target, interpolated_data=interpolate_result, interpolate_range=interpolate_range, column_to_plot=column_to_plot)
+
+    # print(ECG.data['id820D_ECG_LA-RA_24BIT_CAL'])
+    # print(interpolate_result['id820D_ECG_LA-RA_24BIT_CAL'])
+
+
 
     # print(len(VIDEO.timestamp))
