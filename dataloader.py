@@ -144,6 +144,7 @@ class Data:
         self.timestamp_file_name = timestamp_file_name
         self.loader = DataLoader('./recordings/Input')
         self.column = []
+        self.name = modality_type
         
         if modality_type == 'VIDEO':
             video_path = self.loader.load(self.data_file_name, 'avi')
@@ -159,6 +160,9 @@ class Data:
             self.load_data = self.loader.load(self.data_file_name)
             self.timestamp = self.get_timestamp()
             self.data = self.get_data()
+
+    def __str__(self):
+        return self.name  # 객체를 문자열로 변환할 때 반환되는 값
 
     def get_timestamp(self):
         if self.modality_type in ['ECG', 'GSR', 'PPG']:
@@ -355,14 +359,25 @@ if __name__ == "__main__":
     # 보간 범위
     interpolate_range = ["2025-01-10 17:19:30.01213", "2025-01-10 17:19:40.114135"]
     data = ECG      # 보간 기준이 되는 신호
-    target = PPG    # 보간 시키려는 신호
+    target1 = PPG    # 보간 시키려는 신호
+    target2 = GSR    # 보간 시키려는 신호
+
+    t1 = str(target1)
+    t2 = str(target2)
 
     # 보간 수행
-    interpolate_result = interpolate(data=data, target=target, interpolate_range=interpolate_range)
+    interpolate_result1 = interpolate(data=data, target=target1, interpolate_range=interpolate_range)
+    interpolate_result2 = interpolate(data=data, target=target2, interpolate_range=interpolate_range)
+
+    csv_file_path1 = f'C:\\Users\\이동혁\\Desktop\\vidcap\\Data_Synchronization\\interpolated_signals\\interp_{t1}_2_{data}.csv'
+    csv_file_path2 = f'C:\\Users\\이동혁\\Desktop\\vidcap\\Data_Synchronization\\interpolated_signals\\interp_{t2}_2_{data}.csv'
+
+    interpolate_result1.to_csv(csv_file_path1, index=True, encoding='utf-8')
+    interpolate_result2.to_csv(csv_file_path2, index=True, encoding='utf-8')
 
     # 보간된 결과 비교
     column_to_plot = "id95AE_PPG_A13_CAL"  # 플롯할 컬럼명 (보간 기준이 되는 신호에 포함된 컬럼명이여야 함.)
-    plot_signals(original_data=target, interpolated_data=interpolate_result, interpolate_range=interpolate_range, column_to_plot=column_to_plot)
+    # plot_signals(original_data=target, interpolated_data=interpolate_result, interpolate_range=interpolate_range, column_to_plot=column_to_plot)
 
     # print(ECG.data['id820D_ECG_LA-RA_24BIT_CAL'])
     # print(interpolate_result['id820D_ECG_LA-RA_24BIT_CAL'])
