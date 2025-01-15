@@ -15,11 +15,11 @@ def lowpass_filter(data, highcut=5.0, fs=128, order=5):
 
 
 # 데이터 읽기
-file_path = r'C:\Users\이동혁\Desktop\vidcap\Data_Synchronization\recordings\Input\LJY250110_E_Session1_id820D_Calibrated_SD.csv'
-df = pd.read_csv(file_path, skiprows=[0, 2], sep='\t', low_memory=False)
+file_path = r'C:\Users\이동혁\Desktop\vidcap\Data_Synchronization\interpolated_signals\interp_GSR_2_ECG.csv'
+# df = pd.read_csv(file_path, skiprows=[0, 2], sep='\t', low_memory=False)
+df = pd.read_csv(file_path)
 
-
-df = df[500:1500].copy()
+df = df[500:3500].copy()
 
 
 # conductance_columns = [col for col in df.columns if 'id95AE_GSR_Skin_Conductance_CAL' in col]
